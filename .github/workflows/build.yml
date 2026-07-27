@@ -37,23 +37,71 @@ jobs:
         run: |
           sudo apt-get install -y python3-pip zipalign
           pip3 install requests
-          # apktool
-          wget -q https://github.com/iBotPeaches/Apktool/releases/download/v2.9.3/apktool_2.9.3.jar -O /usr/local/bin/apktool.jar
+          # apktool — latest release
+          APKTOOL_VER=$(curl -s https://api.github.com/repos/iBotPeaches/Apktool/releases/latest | grep tag_name | cut -d'"' -f4 | tr -d 'v')
+          wget -q "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar" -O /usr/local/bin/apktool.jar
           wget -q https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool -O /usr/local/bin/apktool
           chmod +x /usr/local/bin/apktool
+          echo "apktool version: $APKTOOL_VER"
           # uber-apk-signer
           wget -q https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar -O /usr/local/bin/signer.jar
 
       - name: Download or use uploaded APK
         run: |
-          if [ -n "${{ github.event.inputs.apk_url }}" ]; then
-            wget -q "${{ github.event.inputs.apk_url }}" -O base.apk
+          APK_URL="${{ github.event.inputs.apk_url }}"
+
+          # Priority 1: explicit URL from workflow_dispatch input
+          if [ -n "$APK_URL" ]; then
+            echo "Downloading APK from provided URL..."
+            wget -q --show-progress "$APK_URL" -O base.apk
+            echo "Downloaded: $(du -sh base.apk | cut -f1)"
+
+          # Priority 2: APK committed to repo under uploaded/
           elif [ -f uploaded/base.apk ]; then
+            echo "Using committed APK from uploaded/base.apk"
             cp uploaded/base.apk base.apk
+
+          # Priority 3: use APK uploaded as a workflow artifact named "input-apk"
           else
-            echo "ERROR: Provide apk_url or upload base.apk to uploaded/ folder"
+            echo "Trying artifact download (requires actions/download-artifact)..."
+            # Check if artifact step already placed it
+            if [ -f input-apk/base.apk ]; then
+              cp input-apk/base.apk base.apk
+            else
+              echo ""
+              echo "════════════════════════════════════════════════════"
+              echo "  ERROR: No APK source found. Pick one of:"
+              echo ""
+              echo "  A) Run workflow manually and paste the APK"
+              echo "     direct-download URL into the 'apk_url' field."
+              echo ""
+              echo "  B) Commit the APK to the repo:"
+              echo "       mkdir uploaded"
+              echo "       cp nulls_brawl.apk uploaded/base.apk"
+              echo "       git add uploaded/base.apk && git push"
+              echo ""
+              echo "  Null's Brawl APK sources:"
+              echo "    https://nullsbrawl.com  (official private server site)"
+              echo "    https://apkpure.com — search 'Nulls Brawl'"
+              echo "════════════════════════════════════════════════════"
+              exit 1
+            fi
+          fi
+
+          # Validate it's actually an APK (PK zip magic bytes)
+          if ! file base.apk | grep -qE "Zip|APK|Java"; then
+            echo "ERROR: Downloaded file doesn't look like an APK"
+            file base.apk
             exit 1
           fi
+
+          echo "APK ready: $(du -sh base.apk | cut -f1)"
+
+      - name: Repair APK zip structure
+        run: |
+          sudo apt-get install -y zip -q
+          zip --fixfix base.apk --out base_fixed.apk 2>/dev/null || cp base.apk base_fixed.apk
+          mv base_fixed.apk base.apk
 
       - name: Decompile APK
         run: |
