@@ -107,15 +107,20 @@ jobs:
         run: |
           apktool d base.apk -o decompiled --no-src -f
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: "8.4"
+
       - name: Build native mod library
         run: |
           cd app
-          ./gradlew assembleRelease --no-daemon
-          # Copy the built .so into decompiled libs
+          gradle assembleRelease --no-daemon
           find . -name "libnullsmod.so" | while read f; do
             abi=$(echo "$f" | grep -oP '(arm64-v8a|armeabi-v7a|x86|x86_64)')
             mkdir -p ../decompiled/lib/$abi
             cp "$f" ../decompiled/lib/$abi/libnullsmod.so
+            echo "Copied $abi/libnullsmod.so"
           done
 
       - name: Inject smali hooks
