@@ -1,0 +1,10 @@
+*.apk
+*.keystore
+decompiled/
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+signed/
