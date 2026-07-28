@@ -17,57 +17,53 @@ namespace Hooks {
 
 void Install() {
     uintptr_t base = IL2CPP::GetLibBase();
-    if (!base) {
-        LOGE("Install: no base address");
-        return;
-    }
+    if (!base) { LOGE("Install: no base"); return; }
 
     bool ok = true;
 
-    // BrawlerComponent::Update — runs every frame per entity
-    // We piggyback aimbot + autododge + ammo esp + view dist here
+    // BrawlerComponent::Update — aimbot + ammo esp + view dist + xray
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::BrawlerComponent_Update),
         (void*)BrawlerUpdateHook,
         (void**)&BrawlerUpdateOrig
     );
 
-    // AttackProjectile::Update — trajectory prediction for auto-dodge
+    // AttackProjectile::Update — auto-dodge trajectory
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::AttackProjectile_Update),
         (void*)ProjectileUpdateHook,
         (void**)&ProjectileUpdateOrig
     );
 
-    // BushRenderer::SetAlpha — xray (force alpha = 0)
+    // BushRenderer::SetAlpha — xray bush ghost
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::BushRenderer_SetAlpha),
         (void*)BushAlphaHook,
         (void**)&BushAlphaOrig
     );
 
-    // FogOfWar::IsVisible — xray (always return true)
+    // FogOfWar::IsVisible — xray invisible reveal
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::FogOfWar_IsVisible),
         (void*)FogIsVisibleHook,
         (void**)&FogIsVisibleOrig
     );
 
-    // Camera farClipPlane — max view distance
+    // Camera::set_farClipPlane — max view dist
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::Camera_set_farClipPlane),
         (void*)CameraFarClipHook,
         (void**)&CameraFarClipOrig
     );
 
-    // QualitySettings::SetQuality — potato graphics
+    // QualitySettings::SetQuality — potato gfx
     ok &= IL2CPP::Hook(
         IL2CPP::Resolve(Offsets::QualitySettings_SetQuality),
         (void*)QualitySetHook,
         (void**)&QualitySetOrig
     );
 
-    LOGI("Hook install %s", ok ? "complete" : "partial (some offsets wrong — update them)");
+    LOGI("Hooks %s", ok ? "OK" : "partial — update offsets in il2cpp_resolver.h");
 }
 
 } // namespace Hooks
