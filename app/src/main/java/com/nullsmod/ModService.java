@@ -5,19 +5,13 @@ import android.content.*;
 import android.graphics.*;
 import android.os.*;
 import android.view.*;
-import android.view.accessibility.*;
 import android.widget.*;
-import androidx.core.app.NotificationCompat;
 
-/**
- * Foreground service that draws the mod menu overlay.
- * Started by the smali hook injected into Brawl's Application.onCreate.
- */
 public class ModService extends Service {
 
     private static final String CHANNEL_ID = "nullsmod_channel";
-    private WindowManager       mWindowManager;
-    private ModMenuView         mMenuView;
+    private WindowManager   mWindowManager;
+    private ModMenuView     mMenuView;
 
     @Override
     public void onCreate() {
@@ -42,6 +36,7 @@ public class ModService extends Service {
         params.x = 16;
         params.y = 120;
 
+        mMenuView.setWindowManager(mWindowManager, params);
         mWindowManager.addView(mMenuView, params);
     }
 
@@ -62,11 +57,19 @@ public class ModService extends Service {
     }
 
     private Notification buildNotification() {
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("NullsMod Active")
-            .setContentText("Tap to open mod menu")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setSmallIcon(android.R.drawable.ic_menu_manage)
-            .build();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return new Notification.Builder(this, CHANNEL_ID)
+                .setContentTitle("NullsMod Active")
+                .setContentText("Mod menu running")
+                .setSmallIcon(android.R.drawable.ic_menu_manage)
+                .build();
+        } else {
+            return new Notification.Builder(this)
+                .setContentTitle("NullsMod Active")
+                .setContentText("Mod menu running")
+                .setSmallIcon(android.R.drawable.ic_menu_manage)
+                .setPriority(Notification.PRIORITY_MIN)
+                .build();
+        }
     }
 }
