@@ -133,7 +133,7 @@ jobs:
 
       - name: Recompile APK
         run: |
-          apktool b decompiled -o patched_unsigned.apk --use-aapt2
+          apktool b decompiled -o patched_unsigned.apk -f
 
       - name: Align APK
         run: |
